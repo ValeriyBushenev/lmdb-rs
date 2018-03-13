@@ -1,10 +1,10 @@
 [package]
-name = "lmdb-rs"
+name = "lmdb-rs-m"
 version = "0.7.6"
 authors = ["Valerii Hiora <valerii.hiora@gmail.com>"]
 license = "MIT"
 description = "LMDB bindings"
-repository = "https://github.com/vhbit/lmdb-rs"
+repository = "https://github.com/itiu/lmdb-rs"
 documentation = "https://vhbit.github.io/lmdb-rs/lmdb_rs"
 readme = "README.md"
 keywords = ["lmdb", "db", "key-value", "kvs", "kv"]
