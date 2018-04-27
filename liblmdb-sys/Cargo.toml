@@ -5,7 +5,7 @@ authors = ["Valerii Hiora <valerii.hiora@gmail.com>"]
 links = "lmdb"
 license = "MIT"
 description = "LMDB native lib"
-repository = "https://github.com/vhbit/lmdb-rs"
+repository = "https://github.com/itiu/lmdb-rs"
 build = "build.rs"
 
 [dependencies]
