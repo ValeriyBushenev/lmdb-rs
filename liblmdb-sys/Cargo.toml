@@ -1,5 +1,5 @@
 [package]
-name = "liblmdb-sys"
+name = "liblmdb-sys-m"
 version = "0.2.3"
 authors = ["Valerii Hiora <valerii.hiora@gmail.com>"]
 links = "lmdb"
