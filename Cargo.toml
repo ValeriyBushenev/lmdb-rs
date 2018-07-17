@@ -15,7 +15,7 @@ exclude = [
 ]
 
 [dependencies.liblmdb-sys]
-path = "liblmdb-sys"
+path = "liblmdb-sys-m"
 version = "0.2.3"
 
 [dependencies]
