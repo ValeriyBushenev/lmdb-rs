@@ -2,7 +2,7 @@ lmdb-rs
 =======
 
 [![Build status (master)](https://travis-ci.org/vhbit/lmdb-rs.svg?branch=master)](https://travis-ci.org/vhbit/lmdb-rs)
-[![Latest version](http://meritbadge.herokuapp.com/lmdb-rs)](https://crates.io/crates/lmdb-rs)
+[![Latest version](http://meritbadge.herokuapp.com/lmdb-rs)](https://crates.io/crates/lmdb-rs-m)
 
 Rust bindings for [LMDB](http://symas.com/mdb/)
 
@@ -12,10 +12,6 @@ Building
 ========
 
 LMDB is bundled as submodule so update submodules first:
-
-`git submodule update --init`
-
-And then
 
 `cargo build`
 
