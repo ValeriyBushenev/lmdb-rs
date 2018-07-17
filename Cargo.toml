@@ -14,7 +14,7 @@ exclude = [
         "up_doc.sh",
 ]
 
-[dependencies.liblmdb-sys]
+[dependencies.liblmdb-sys-m]
 path = "liblmdb-sys-m"
 version = "0.2.3"
 

@@ -6,7 +6,7 @@ extern crate libc;
 #[macro_use] extern crate bitflags;
 #[macro_use] extern crate log;
 
-extern crate liblmdb_sys as ffi;
+extern crate liblmdb_sys_m as ffi;
 
 pub use libc::c_int;
 pub use ffi::{mdb_filehandle_t, MDB_stat, MDB_envinfo, MDB_val};
