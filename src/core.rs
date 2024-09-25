@@ -607,21 +607,31 @@ impl EnvBuilder {
 
     /// Opens environment in specified path
     pub fn open<P: AsRef<Path>>(self, path: P, perms: u32) -> MdbResult<Environment> {
+        println!("@lmdb-rs 1");
         let changeable_flags: EnvCreateFlags = EnvCreataMapAsync | EnvCreateNoMemInit | EnvCreateNoSync | EnvCreateNoMetaSync;
 
+        println!("@lmdb-rs 2");
         let env: *mut ffi::MDB_env = ptr::null_mut();
+        println!("@lmdb-rs 3");
         unsafe {
+            println!("@lmdb-rs 4");
             let p_env: *mut *mut ffi::MDB_env = std::mem::transmute(&env);
+            println!("@lmdb-rs 5");
             let _ = try_mdb!(ffi::mdb_env_create(p_env));
         }
+        println!("@lmdb-rs 6");
 
         // Enable only flags which can be changed, otherwise it'll fail
         try_mdb!(unsafe { ffi::mdb_env_set_flags(env, self.flags.bits() & changeable_flags.bits(), 1)});
+        println!("@lmdb-rs 7");
 
         if let Some(map_size) = self.map_size {
+            println!("@lmdb-rs 8");
             try_mdb!(unsafe { ffi::mdb_env_set_mapsize(env, map_size as size_t)});
+            println!("@lmdb-rs 9");
         }
 
+        println!("@lmdb-rs 10");
         if let Some(max_readers) = self.max_readers {
             try_mdb!(unsafe { ffi::mdb_env_set_maxreaders(env, max_readers as u32)});
         }
