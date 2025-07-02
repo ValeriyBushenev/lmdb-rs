@@ -3,6 +3,7 @@ name = "lmdb-rs-m"
 version = "0.7.9"
 authors = ["Valerii Hiora <valerii.hiora@gmail.com>"]
 license = "MIT"
+edition = "2021"
 description = "LMDB bindings"
 repository = "https://github.com/ValeriyBushenev/lmdb-rs"
 documentation = "https://vhbit.github.io/lmdb-rs/lmdb_rs"

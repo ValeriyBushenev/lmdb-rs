@@ -59,8 +59,8 @@ use bitflags::bitflags;
 use ffi::{self, MDB_val};
 pub use MdbError::{NotFound, KeyExists, Other, StateError, Corrupted, Panic};
 pub use MdbError::{InvalidPath, TxnFull, CursorFull, PageFull, CacheError};
-use traits::{ToMdbValue, FromMdbValue};
-use utils::{error_msg};
+use crate::traits::{ToMdbValue, FromMdbValue};
+use crate::utils::{error_msg};
 
 
 macro_rules! lift_mdb {
@@ -408,12 +408,12 @@ impl<'a> Database<'a> {
     }
 
     /// Retrieves a value by key. In case of DbAllowDups it will be the first value
-    pub fn get<V: FromMdbValue + 'a>(&'a self, key: &ToMdbValue) -> MdbResult<V> {
+    pub fn get<V: FromMdbValue + 'a>(&'a self, key: &dyn ToMdbValue) -> MdbResult<V> {
         self.txn.get(self.handle, key)
     }
 
     /// Sets value for key. In case of DbAllowDups it will add a new item
-    pub fn set(&self, key: &ToMdbValue, value: &ToMdbValue) -> MdbResult<()> {
+    pub fn set(&self, key: &dyn ToMdbValue, value: &dyn ToMdbValue) -> MdbResult<()> {
         self.txn.set(self.handle, key, value)
     }
 
@@ -432,17 +432,17 @@ impl<'a> Database<'a> {
     }
 
     /// Set value for key. Fails if key already exists, even when duplicates are allowed.
-    pub fn insert(&self, key: &ToMdbValue, value: &ToMdbValue) -> MdbResult<()> {
+    pub fn insert(&self, key: &dyn ToMdbValue, value: &dyn ToMdbValue) -> MdbResult<()> {
         self.txn.insert(self.handle, key, value)
     }
 
     /// Deletes value for key.
-    pub fn del(&self, key: &ToMdbValue) -> MdbResult<()> {
+    pub fn del(&self, key: &dyn ToMdbValue) -> MdbResult<()> {
         self.txn.del(self.handle, key)
     }
 
     /// Should be used only with DbAllowDups. Deletes corresponding (key, value)
-    pub fn del_item(&self, key: &ToMdbValue, data: &ToMdbValue) -> MdbResult<()> {
+    pub fn del_item(&self, key: &dyn ToMdbValue, data: &dyn ToMdbValue) -> MdbResult<()> {
         self.txn.del_item(self.handle, key, data)
     }
 
@@ -1055,7 +1055,7 @@ impl<'a> NativeTransaction<'a> {
         }
     }
 
-    fn get_value<V: FromMdbValue + 'a>(&'a self, db: ffi::MDB_dbi, key: &ToMdbValue) -> MdbResult<V> {
+    fn get_value<V: FromMdbValue + 'a>(&'a self, db: ffi::MDB_dbi, key: &dyn ToMdbValue) -> MdbResult<V> {
         let mut key_val = key.to_mdb_value();
         unsafe {
             let mut data_val: MdbValue = std::mem::zeroed();
@@ -1064,16 +1064,16 @@ impl<'a> NativeTransaction<'a> {
         }
     }
 
-    fn get<V: FromMdbValue + 'a>(&'a self, db: ffi::MDB_dbi, key: &ToMdbValue) -> MdbResult<V> {
+    fn get<V: FromMdbValue + 'a>(&'a self, db: ffi::MDB_dbi, key: &dyn ToMdbValue) -> MdbResult<V> {
         assert_state_eq!(txn, self.state, TransactionState::Normal);
         self.get_value(db, key)
     }
 
-    fn set_value(&self, db: ffi::MDB_dbi, key: &ToMdbValue, value: &ToMdbValue) -> MdbResult<()> {
+    fn set_value(&self, db: ffi::MDB_dbi, key: &dyn ToMdbValue, value: &dyn ToMdbValue) -> MdbResult<()> {
         self.set_value_with_flags(db, key, value, 0)
     }
 
-    fn set_value_with_flags(&self, db: ffi::MDB_dbi, key: &ToMdbValue, value: &ToMdbValue, flags: c_uint) -> MdbResult<()> {
+    fn set_value_with_flags(&self, db: ffi::MDB_dbi, key: &dyn ToMdbValue, value: &dyn ToMdbValue, flags: c_uint) -> MdbResult<()> {
         unsafe {
             let mut key_val = key.to_mdb_value();
             let mut data_val = value.to_mdb_value();
@@ -1086,30 +1086,30 @@ impl<'a> NativeTransaction<'a> {
     /// it actually appends a new value
     // FIXME: think about creating explicit separation of
     // all traits for databases with dup keys
-    fn set(&self, db: ffi::MDB_dbi, key: &ToMdbValue, value: &ToMdbValue) -> MdbResult<()> {
+    fn set(&self, db: ffi::MDB_dbi, key: &dyn ToMdbValue, value: &dyn ToMdbValue) -> MdbResult<()> {
         assert_state_eq!(txn, self.state, TransactionState::Normal);
         self.set_value(db, key, value)
     }
 
-    fn append(&self, db: ffi::MDB_dbi, key: &ToMdbValue, value: &ToMdbValue) -> MdbResult<()> {
+    fn append(&self, db: ffi::MDB_dbi, key: &dyn ToMdbValue, value: &dyn ToMdbValue) -> MdbResult<()> {
         assert_state_eq!(txn, self.state, TransactionState::Normal);
         self.set_value_with_flags(db, key, value, ffi::MDB_APPEND)
     }
 
-    fn append_duplicate(&self, db: ffi::MDB_dbi, key: &ToMdbValue, value: &ToMdbValue) -> MdbResult<()> {
+    fn append_duplicate(&self, db: ffi::MDB_dbi, key: &dyn ToMdbValue, value: &dyn ToMdbValue) -> MdbResult<()> {
         assert_state_eq!(txn, self.state, TransactionState::Normal);
         self.set_value_with_flags(db, key, value, ffi::MDB_APPENDDUP)
     }
 
     /// Set the value for key only if the key does not exist in the database,
     /// even if the database supports duplicates.
-    fn insert(&self, db: ffi::MDB_dbi, key: &ToMdbValue, value: &ToMdbValue) -> MdbResult<()> {
+    fn insert(&self, db: ffi::MDB_dbi, key: &dyn ToMdbValue, value: &dyn ToMdbValue) -> MdbResult<()> {
         assert_state_eq!(txn, self.state, TransactionState::Normal);
         self.set_value_with_flags(db, key, value, ffi::MDB_NOOVERWRITE)
     }
 
     /// Deletes all values by key
-    fn del_value(&self, db: ffi::MDB_dbi, key: &ToMdbValue) -> MdbResult<()> {
+    fn del_value(&self, db: ffi::MDB_dbi, key: &dyn ToMdbValue) -> MdbResult<()> {
         unsafe {
             let mut key_val = key.to_mdb_value();
             lift_mdb!(ffi::mdb_del(self.handle, db, &mut key_val.value, ptr::null_mut()))
@@ -1117,7 +1117,7 @@ impl<'a> NativeTransaction<'a> {
     }
 
     /// If duplicate keys are allowed deletes value for key which is equal to data
-    fn del_item(&self, db: ffi::MDB_dbi, key: &ToMdbValue, data: &ToMdbValue) -> MdbResult<()> {
+    fn del_item(&self, db: ffi::MDB_dbi, key: &dyn ToMdbValue, data: &dyn ToMdbValue) -> MdbResult<()> {
         assert_state_eq!(txn, self.state, TransactionState::Normal);
         unsafe {
             let mut key_val = key.to_mdb_value();
@@ -1128,7 +1128,7 @@ impl<'a> NativeTransaction<'a> {
     }
 
     /// Deletes all values for key
-    fn del(&self, db: ffi::MDB_dbi, key: &ToMdbValue) -> MdbResult<()> {
+    fn del(&self, db: ffi::MDB_dbi, key: &dyn ToMdbValue) -> MdbResult<()> {
         assert_state_eq!(txn, self.state, TransactionState::Normal);
         self.del_value(db, key)
     }
