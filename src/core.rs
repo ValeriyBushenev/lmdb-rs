@@ -54,6 +54,8 @@ use std::ptr;
 use std::result::Result;
 use std::sync::{Arc, Mutex};
 
+use bitflags::bitflags;
+
 use ffi::{self, MDB_val};
 pub use MdbError::{NotFound, KeyExists, Other, StateError, Corrupted, Panic};
 pub use MdbError::{InvalidPath, TxnFull, CursorFull, PageFull, CacheError};
@@ -178,8 +180,8 @@ pub type MdbResult<T> = Result<T, MdbError>;
 
 bitflags! {
     #[doc = "A set of environment flags which could be changed after opening"]
-
-    pub flags EnvFlags: c_uint {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+    pub struct EnvFlags: c_uint {
 
         #[doc="Don't flush system buffers to disk when committing a
         transaction. This optimization means a system crash can
@@ -196,7 +198,7 @@ bitflags! {
         to disk, unless mdb_env_sync() is called. (MDB_MAPASYNC |
         MDB_WRITEMAP) may be preferable. This flag may be changed at
         any time using mdb_env_set_flags()."]
-        const EnvNoSync      = ffi::MDB_NOSYNC,
+        const EnvNoSync      = ffi::MDB_NOSYNC;
 
         #[doc="Flush system buffers to disk only once per transaction,
         omit the metadata flush. Defer that until the system flushes
@@ -207,7 +209,7 @@ bitflags! {
         consistency, isolation) but not D (durability) database
         property. This flag may be changed at any time using
         mdb_env_set_flags()."]
-        const EnvNoMetaSync  = ffi::MDB_NOMETASYNC,
+        const EnvNoMetaSync  = ffi::MDB_NOMETASYNC;
 
         #[doc="When using MDB_WRITEMAP, use asynchronous flushes to
         disk. As with MDB_NOSYNC, a system crash can then corrupt the
@@ -215,7 +217,7 @@ bitflags! {
         mdb_env_sync() ensures on-disk database integrity until next
         commit. This flag may be changed at any time using
         mdb_env_set_flags()."]
-        const EnvMapAsync    = ffi::MDB_MAPASYNC,
+        const EnvMapAsync    = ffi::MDB_MAPASYNC;
 
         #[doc="Don't initialize malloc'd memory before writing to
         unused spaces in the data file. By default, memory for pages
@@ -237,14 +239,14 @@ bitflags! {
         to overwrite all of the memory that was reserved in that
         case. This flag may be changed at any time using
         mdb_env_set_flags()."]
-        const EnvNoMemInit   = ffi::MDB_NOMEMINIT
+        const EnvNoMemInit   = ffi::MDB_NOMEMINIT;
     }
 }
 
 bitflags! {
     #[doc = "A set of all environment flags"]
-
-    pub flags EnvCreateFlags: c_uint {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+    pub struct EnvCreateFlags: c_uint {
         #[doc="Use a fixed address for the mmap region. This flag must be"]
         #[doc=" specified when creating the environment, and is stored persistently"]
         #[doc=" in the environment. If successful, the memory map will always reside"]
@@ -252,13 +254,13 @@ bitflags! {
         #[doc=" in the database will be constant across multiple invocations. This "]
         #[doc="option may not always work, depending on how the operating system has"]
         #[doc=" allocated memory to shared libraries and other uses. The feature is highly experimental."]
-        const EnvCreateFixedMap    = ffi::MDB_FIXEDMAP,
+        const EnvCreateFixedMap    = ffi::MDB_FIXEDMAP;
         #[doc="By default, LMDB creates its environment in a directory whose"]
         #[doc=" pathname is given in path, and creates its data and lock files"]
         #[doc=" under that directory. With this option, path is used as-is"]
         #[doc=" for the database main data file. The database lock file is"]
         #[doc=" the path with \"-lock\" appended."]
-        const EnvCreateNoSubDir    = ffi::MDB_NOSUBDIR,
+        const EnvCreateNoSubDir    = ffi::MDB_NOSUBDIR;
         #[doc="Don't flush system buffers to disk when committing a"]
         #[doc=" transaction. This optimization means a system crash can corrupt"]
         #[doc=" the database or lose the last transactions if buffers are not"]
@@ -274,11 +276,11 @@ bitflags! {
         #[doc=" disk, unless mdb_env_sync() is called."]
         #[doc=" (MDB_MAPASYNC | MDB_WRITEMAP) may be preferable. This flag"]
         #[doc=" may be changed at any time using mdb_env_set_flags()."]
-        const EnvCreateNoSync      = ffi::MDB_NOSYNC,
+        const EnvCreateNoSync      = ffi::MDB_NOSYNC;
         #[doc="Open the environment in read-only mode. No write operations"]
         #[doc=" will be allowed. LMDB will still modify the lock file - except"]
         #[doc=" on read-only filesystems, where LMDB does not use locks."]
-        const EnvCreateReadOnly    = ffi::MDB_RDONLY,
+        const EnvCreateReadOnly    = ffi::MDB_RDONLY;
         #[doc="Flush system buffers to disk only once per transaction,"]
         #[doc=" omit the metadata flush. Defer that until the system flushes"]
         #[doc=" files to disk, or next non-MDB_RDONLY commit or mdb_env_sync()."]
@@ -287,20 +289,20 @@ bitflags! {
         #[doc=" preserves the ACI (atomicity, consistency, isolation) but"]
         #[doc=" not D (durability) database property. This flag may be changed"]
         #[doc=" at any time using mdb_env_set_flags()."]
-        const EnvCreateNoMetaSync  = ffi::MDB_NOMETASYNC,
+        const EnvCreateNoMetaSync  = ffi::MDB_NOMETASYNC;
         #[doc="Use a writeable memory map unless MDB_RDONLY is set. This is"]
         #[doc="faster and uses fewer mallocs, but loses protection from"]
         #[doc="application bugs like wild pointer writes and other bad updates"]
         #[doc="into the database. Incompatible with nested"]
         #[doc="transactions. Processes with and without MDB_WRITEMAP on the"]
         #[doc="same environment do not cooperate well."]
-        const EnvCreateWriteMap    = ffi::MDB_WRITEMAP,
+        const EnvCreateWriteMap    = ffi::MDB_WRITEMAP;
         #[doc="When using MDB_WRITEMAP, use asynchronous flushes to disk. As"]
         #[doc="with MDB_NOSYNC, a system crash can then corrupt the database or"]
         #[doc="lose the last transactions. Calling mdb_env_sync() ensures"]
         #[doc="on-disk database integrity until next commit. This flag may be"]
         #[doc="changed at any time using mdb_env_set_flags()."]
-        const EnvCreataMapAsync    = ffi::MDB_MAPASYNC,
+        const EnvCreateMapAsync    = ffi::MDB_MAPASYNC;
         #[doc="Don't use Thread-Local Storage. Tie reader locktable slots to"]
         #[doc="ffi::MDB_txn objects instead of to threads. I.e. mdb_txn_reset()"]
         #[doc="keeps the slot reseved for the ffi::MDB_txn object. A thread may"]
@@ -310,20 +312,20 @@ bitflags! {
         #[doc="option. Such an application must also serialize the write"]
         #[doc="transactions in an OS thread, since LMDB's write locking is"]
         #[doc="unaware of the user threads."]
-        const EnvCreateNoTls       = ffi::MDB_NOTLS,
+        const EnvCreateNoTls       = ffi::MDB_NOTLS;
         #[doc="Don't do any locking. If concurrent access is anticipated, the"]
         #[doc="caller must manage all concurrency itself. For proper operation"]
         #[doc="the caller must enforce single-writer semantics, and must ensure"]
         #[doc="that no readers are using old transactions while a writer is"]
         #[doc="active. The simplest approach is to use an exclusive lock so"]
         #[doc="that no readers may be active at all when a writer begins. "]
-        const EnvCreateNoLock      = ffi::MDB_NOLOCK,
+        const EnvCreateNoLock      = ffi::MDB_NOLOCK;
         #[doc="Turn off readahead. Most operating systems perform readahead on"]
         #[doc="read requests by default. This option turns it off if the OS"]
         #[doc="supports it. Turning it off may help random read performance"]
         #[doc="when the DB is larger than RAM and system RAM is full. The"]
         #[doc="option is not implemented on Windows."]
-        const EnvCreateNoReadAhead = ffi::MDB_NORDAHEAD,
+        const EnvCreateNoReadAhead = ffi::MDB_NORDAHEAD;
         #[doc="Don't initialize malloc'd memory before writing to unused spaces"]
         #[doc="in the data file. By default, memory for pages written to the"]
         #[doc="data file is obtained using malloc. While these pages may be"]
@@ -343,27 +345,27 @@ bitflags! {
         #[doc="MDB_RESERVE is used; the caller is expected to overwrite all of"]
         #[doc="the memory that was reserved in that case. This flag may be"]
         #[doc="changed at any time using mdb_env_set_flags()."]
-        const EnvCreateNoMemInit   = ffi::MDB_NOMEMINIT
+        const EnvCreateNoMemInit   = ffi::MDB_NOMEMINIT;
     }
 }
 
 bitflags! {
     #[doc = "A set of database flags"]
-
-    pub flags DbFlags: c_uint {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+    pub struct DbFlags: c_uint {
         #[doc="Keys are strings to be compared in reverse order, from the"]
         #[doc=" end of the strings to the beginning. By default, Keys are"]
         #[doc=" treated as strings and compared from beginning to end."]
-        const DbReverseKey   = ffi::MDB_REVERSEKEY,
+        const DbReverseKey   = ffi::MDB_REVERSEKEY;
         #[doc="Duplicate keys may be used in the database. (Or, from another"]
         #[doc="perspective, keys may have multiple data items, stored in sorted"]
         #[doc="order.) By default keys must be unique and may have only a"]
         #[doc="single data item."]
-        const DbAllowDups    = ffi::MDB_DUPSORT,
+        const DbAllowDups    = ffi::MDB_DUPSORT;
         #[doc="Keys are binary integers in native byte order. Setting this"]
         #[doc="option requires all keys to be the same size, typically"]
         #[doc="sizeof(int) or sizeof(size_t)."]
-        const DbIntKey       = ffi::MDB_INTEGERKEY,
+        const DbIntKey       = ffi::MDB_INTEGERKEY;
         #[doc="This flag may only be used in combination with"]
         #[doc="ffi::MDB_DUPSORT. This option tells the library that the data"]
         #[doc="items for this database are all the same size, which allows"]
@@ -371,17 +373,17 @@ bitflags! {
         #[doc="items are the same size, the ffi::MDB_GET_MULTIPLE and"]
         #[doc="ffi::MDB_NEXT_MULTIPLE cursor operations may be used to retrieve"]
         #[doc="multiple items at once."]
-        const DbDupFixed     = ffi::MDB_DUPFIXED,
+        const DbDupFixed     = ffi::MDB_DUPFIXED;
         #[doc="This option specifies that duplicate data items are also"]
         #[doc="integers, and should be sorted as such."]
-        const DbAllowIntDups = ffi::MDB_INTEGERDUP,
+        const DbAllowIntDups = ffi::MDB_INTEGERDUP;
         #[doc="This option specifies that duplicate data items should be"]
         #[doc=" compared as strings in reverse order."]
-        const DbReversedDups = ffi::MDB_REVERSEDUP,
+        const DbReversedDups = ffi::MDB_REVERSEDUP;
         #[doc="Create the named database if it doesn't exist. This option"]
         #[doc=" is not allowed in a read-only transaction or a read-only"]
         #[doc=" environment."]
-        const DbCreate       = ffi::MDB_CREATE,
+        const DbCreate       = ffi::MDB_CREATE;
     }
 }
 
@@ -467,7 +469,7 @@ impl<'a> Database<'a> {
 
     /// Returns an iterator through keys starting with start_key (>=), start_key is included
     pub fn keyrange_from<'c, K: ToMdbValue + 'c>(&'c self, start_key: &'c K) -> MdbResult<CursorIterator<'c, CursorFromKeyIter>> {
-        let cursor = try!(self.txn.new_cursor(self.handle));
+        let cursor = self.txn.new_cursor(self.handle)?;
         let key_range = CursorFromKeyIter::new(start_key);
         let wrap = CursorIterator::wrap(cursor, key_range);
         Ok(wrap)
@@ -475,7 +477,7 @@ impl<'a> Database<'a> {
 
     /// Returns an iterator through keys less than end_key, end_key is not included
     pub fn keyrange_to<'c, K: ToMdbValue + 'c>(&'c self, end_key: &'c K) -> MdbResult<CursorIterator<'c, CursorToKeyIter>> {
-        let cursor = try!(self.txn.new_cursor(self.handle));
+        let cursor = self.txn.new_cursor(self.handle)?;
         let key_range = CursorToKeyIter::new(end_key);
         let wrap = CursorIterator::wrap(cursor, key_range);
         Ok(wrap)
@@ -486,7 +488,7 @@ impl<'a> Database<'a> {
     pub fn keyrange_from_to<'c, K: ToMdbValue + 'c>(&'c self, start_key: &'c K, end_key: &'c K)
                                -> MdbResult<CursorIterator<'c, CursorKeyRangeIter>>
     {
-        let cursor = try!(self.txn.new_cursor(self.handle));
+        let cursor = self.txn.new_cursor(self.handle)?;
         let key_range = CursorKeyRangeIter::new(start_key, end_key, false);
         let wrap = CursorIterator::wrap(cursor, key_range);
         Ok(wrap)
@@ -499,7 +501,7 @@ impl<'a> Database<'a> {
     pub fn keyrange<'c, K: ToMdbValue + 'c>(&'c self, start_key: &'c K, end_key: &'c K)
                                -> MdbResult<CursorIterator<'c, CursorKeyRangeIter>>
     {
-        let cursor = try!(self.txn.new_cursor(self.handle));
+        let cursor = self.txn.new_cursor(self.handle)?;
         let key_range = CursorKeyRangeIter::new(start_key, end_key, true);
         let wrap = CursorIterator::wrap(cursor, key_range);
         Ok(wrap)
@@ -507,7 +509,7 @@ impl<'a> Database<'a> {
 
     /// Returns an iterator for all items (i.e. values with same key)
     pub fn item_iter<'c, 'db: 'c, K: ToMdbValue>(&'db self, key: &'c K) -> MdbResult<CursorIterator<'c, CursorItemIter<'c>>> {
-        let cursor = try!(self.txn.new_cursor(self.handle));
+        let cursor = self.txn.new_cursor(self.handle)?;
         let inner_iter = CursorItemIter::<'c>::new(key);
         Ok(CursorIterator::<'c>::wrap(cursor, inner_iter))
     }
@@ -607,31 +609,21 @@ impl EnvBuilder {
 
     /// Opens environment in specified path
     pub fn open<P: AsRef<Path>>(self, path: P, perms: u32) -> MdbResult<Environment> {
-        println!("@lmdb-rs 1");
-        let changeable_flags: EnvCreateFlags = EnvCreataMapAsync | EnvCreateNoMemInit | EnvCreateNoSync | EnvCreateNoMetaSync;
+        let changeable_flags: EnvCreateFlags = EnvCreateFlags::EnvCreateMapAsync | EnvCreateFlags::EnvCreateNoMemInit | EnvCreateFlags::EnvCreateNoSync | EnvCreateFlags::EnvCreateNoMetaSync;
 
-        println!("@lmdb-rs 2");
         let env: *mut ffi::MDB_env = ptr::null_mut();
-        println!("@lmdb-rs 3");
         unsafe {
-            println!("@lmdb-rs 4");
             let p_env: *mut *mut ffi::MDB_env = std::mem::transmute(&env);
-            println!("@lmdb-rs 5");
             let _ = try_mdb!(ffi::mdb_env_create(p_env));
         }
-        println!("@lmdb-rs 6");
 
         // Enable only flags which can be changed, otherwise it'll fail
         try_mdb!(unsafe { ffi::mdb_env_set_flags(env, self.flags.bits() & changeable_flags.bits(), 1)});
-        println!("@lmdb-rs 7");
 
         if let Some(map_size) = self.map_size {
-            println!("@lmdb-rs 8");
             try_mdb!(unsafe { ffi::mdb_env_set_mapsize(env, map_size as size_t)});
-            println!("@lmdb-rs 9");
         }
 
-        println!("@lmdb-rs 10");
         if let Some(max_readers) = self.max_readers {
             try_mdb!(unsafe { ffi::mdb_env_set_maxreaders(env, max_readers as u32)});
         }
@@ -641,16 +633,16 @@ impl EnvBuilder {
         }
 
         if self.autocreate_dir {
-            let _ = try!(EnvBuilder::check_path(&path, self.flags));
+            let _ = EnvBuilder::check_path(&path, self.flags)?;
         }
 
-        let is_readonly = self.flags.contains(EnvCreateReadOnly);
+        let is_readonly = self.flags.contains(EnvCreateFlags::EnvCreateReadOnly);
 
         let res = unsafe {
             // FIXME: revert back once `convert` is stable
             // let c_path = path.as_os_str().to_cstring().unwrap();
-            let path_str = try!(path.as_ref().to_str().ok_or(MdbError::InvalidPath));
-            let c_path = try!(CString::new(path_str).map_err(|_| MdbError::InvalidPath));
+            let path_str = path.as_ref().to_str().ok_or(MdbError::InvalidPath)?;
+            let c_path = CString::new(path_str).map_err(|_| MdbError::InvalidPath)?;
 
             ffi::mdb_env_open(mem::transmute(env), c_path.as_ref().as_ptr(), self.flags.bits(),
                               perms as ffi::mdb_mode_t)
@@ -672,7 +664,7 @@ impl EnvBuilder {
     fn check_path<P: AsRef<Path>>(path: P, flags: EnvCreateFlags) -> MdbResult<()> {
         use std::{fs, io};
 
-        if flags.contains(EnvCreateNoSubDir) {
+        if flags.contains(EnvCreateFlags::EnvCreateNoSubDir) {
             // FIXME: check parent dir existence/absence
             warn!("checking for path in NoSubDir mode isn't implemented yet");
             return Ok(());
@@ -776,7 +768,7 @@ impl Environment {
     /// Get flags of environment, which could be changed after it was opened
     /// use [get_all_flags](#method.get_all_flags) if you need also creation time flags
     pub fn get_flags(&self) -> MdbResult<EnvFlags> {
-        let tmp = try!(self.get_all_flags());
+        let tmp = self.get_all_flags()?;
         Ok(EnvFlags::from_bits_truncate(tmp.bits()))
     }
 
@@ -814,8 +806,8 @@ impl Environment {
     pub fn copy_to_path<P: AsRef<Path>>(&self, path: P) -> MdbResult<()> {
         // FIXME: revert back once `convert` is stable
         // let c_path = path.as_os_str().to_cstring().unwrap();
-        let path_str = try!(path.as_ref().to_str().ok_or(MdbError::InvalidPath));
-        let c_path = try!(CString::new(path_str).map_err(|_| MdbError::InvalidPath));
+        let path_str = path.as_ref().to_str().ok_or(MdbError::InvalidPath)?;
+        let c_path = CString::new(path_str).map_err(|_| MdbError::InvalidPath)?;
 
         unsafe {
             lift_mdb!(ffi::mdb_env_copy(self.env.0, c_path.as_ref().as_ptr()))
@@ -873,10 +865,10 @@ impl Environment {
 
                 let mut txn = {
                     let txflags = if self.is_readonly { ffi::MDB_RDONLY } else { 0 };
-                    try!(self.create_transaction(None, txflags))
+                    self.create_transaction(None, txflags)?
                 };
                 let opt_name = if db_name.len() > 0 {Some(db_name)} else {None};
-                let flags = if force_creation {flags | DbCreate} else {flags - DbCreate};
+                let flags = if force_creation {flags | DbFlags::DbCreate} else {flags - DbFlags::DbCreate};
 
                 let mut db: ffi::MDB_dbi = 0;
                 let db_res = match opt_name {
@@ -890,7 +882,7 @@ impl Environment {
                 };
 
                 try_mdb!(db_res);
-                try!(txn.commit());
+                txn.commit()?;
 
                 debug!("Caching: {} -> {}", db_name, db);
                 unsafe {
@@ -904,13 +896,13 @@ impl Environment {
 
     /// Opens existing DB
     pub fn get_db(& self, db_name: &str, flags: DbFlags) -> MdbResult<DbHandle> {
-        let db = try!(self._open_db(db_name, flags, false));
+        let db = self._open_db(db_name, flags, false)?;
         Ok(DbHandle {handle: db, flags: flags})
     }
 
     /// Opens or creates a DB
     pub fn create_db(&self, db_name: &str, flags: DbFlags) -> MdbResult<DbHandle> {
-        let db = try!(self._open_db(db_name, flags, true));
+        let db = self._open_db(db_name, flags, true)?;
         Ok(DbHandle {handle: db, flags: flags})
     }
 
@@ -1423,7 +1415,7 @@ impl<'txn> Cursor<'txn> {
 
     /// Retrieves current key/value as tuple
     pub fn get<'a, T: FromMdbValue + 'a, U: FromMdbValue + 'a>(&'a mut self) -> MdbResult<(T, U)> {
-        let (k, v) = try!(self.get_plain());
+        let (k, v) = self.get_plain()?;
 
         unsafe {
             Ok((FromMdbValue::from_mdb_value(mem::transmute(&k)),
@@ -1433,7 +1425,7 @@ impl<'txn> Cursor<'txn> {
 
     /// Retrieves current value
     pub fn get_value<'a, V: FromMdbValue + 'a>(&'a mut self) -> MdbResult<V> {
-        let (_, v) = try!(self.get_plain());
+        let (_, v) = self.get_plain()?;
 
         unsafe {
             Ok(FromMdbValue::from_mdb_value(mem::transmute(&v)))
@@ -1442,7 +1434,7 @@ impl<'txn> Cursor<'txn> {
 
     /// Retrieves current key
     pub fn get_key<'a, K: FromMdbValue + 'a>(&'a mut self) -> MdbResult<K> {
-        let (k, _) = try!(self.get_plain());
+        let (k, _) = self.get_plain()?;
 
         unsafe {
             Ok(FromMdbValue::from_mdb_value(mem::transmute(&k)))
@@ -1452,7 +1444,7 @@ impl<'txn> Cursor<'txn> {
     /// Compares the cursor's current key with the specified other one.
     #[inline]
     fn cmp_key(&mut self, other: &MdbValue) -> MdbResult<Ordering> {
-        let (k, _) = try!(self.get_plain());
+        let (k, _) = self.get_plain()?;
         let mut kval = k.value;
         let cmp = unsafe {
             ffi::mdb_cmp(self.txn.handle, self.db, &mut kval, mem::transmute(other))
@@ -1481,7 +1473,7 @@ impl<'txn> Cursor<'txn> {
 
     #[inline]
     fn get_plain(&mut self) -> MdbResult<(MdbValue<'txn>, MdbValue<'txn>)> {
-        try!(self.ensure_key_valid());
+        self.ensure_key_valid()?;
         let k = MdbValue {value: self.key_val, marker: ::std::marker::PhantomData};
         let v = MdbValue {value: self.data_val, marker: ::std::marker::PhantomData};
 
@@ -1499,7 +1491,7 @@ impl<'txn> Cursor<'txn> {
     }
 
     fn set_value<V: ToMdbValue>(&mut self, value: &V, flags: c_uint) -> MdbResult<()> {
-        try!(self.ensure_key_valid());
+        self.ensure_key_valid()?;
         self.data_val = value.to_mdb_value().value;
         lift_mdb!(unsafe {ffi::mdb_cursor_put(self.handle, &mut self.key_val, &mut self.data_val, flags)})
     }
@@ -1580,7 +1572,7 @@ pub struct CursorItemAccessor<'c, 'k, K: 'k> {
 
 impl<'k, 'c: 'k, K: ToMdbValue> CursorItemAccessor<'c, 'k, K> {
     pub fn get<'a, V: FromMdbValue + 'a>(&'a mut self) -> MdbResult<V> {
-        try!(self.cursor.to_key(self.key));
+        self.cursor.to_key(self.key)?;
         self.cursor.get_value()
     }
 
@@ -1589,12 +1581,12 @@ impl<'k, 'c: 'k, K: ToMdbValue> CursorItemAccessor<'c, 'k, K> {
     }
 
     pub fn del<V: ToMdbValue>(&mut self, v: &V) -> MdbResult<()> {
-        try!(self.cursor.to_item(self.key, v));
+        self.cursor.to_item(self.key, v)?;
         self.cursor.del_item()
     }
 
     pub fn del_all(&mut self) -> MdbResult<()> {
-        try!(self.cursor.to_key(self.key));
+        self.cursor.to_key(self.key)?;
         self.cursor.del_all()
     }
 

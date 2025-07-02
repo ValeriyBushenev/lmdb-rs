@@ -2,8 +2,9 @@
 #![allow(trivial_numeric_casts)]
 
 extern crate libc;
+extern crate bitflags;
 
-#[macro_use] extern crate bitflags;
+
 #[macro_use] extern crate log;
 
 extern crate liblmdb_sys_m as ffi;

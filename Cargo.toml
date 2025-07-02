@@ -1,6 +1,6 @@
 [package]
 name = "lmdb-rs-m"
-version = "0.7.8-dev"
+version = "0.7.9"
 authors = ["Valerii Hiora <valerii.hiora@gmail.com>"]
 license = "MIT"
 description = "LMDB bindings"
@@ -19,6 +19,6 @@ path = "liblmdb-sys-m"
 version = "0.2.3"
 
 [dependencies]
-log = "0.3"
+log = "0.4"
 libc = "0.2"
-bitflags = "0.7"
+bitflags = "2.9"

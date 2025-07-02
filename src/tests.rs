@@ -224,7 +224,7 @@ fn test_resize_map() {
         {
             let db = txn.bind(&db);
             let test_key = format!("key_{}", key_idx);
-            try!(db.set(&test_key, &(&test_data[..])));
+            db.set(&test_key, &(&test_data[..]))?;
         }
         key_idx += 1;
         txn.commit()
