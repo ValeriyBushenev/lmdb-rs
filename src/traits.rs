@@ -21,23 +21,21 @@ use ffi::MDB_val;
 /// `ToMdbValue` is supposed to convert a value to a memory
 /// slice which `lmdb` uses to prevent multiple copying data
 /// multiple times. May be unsafe.
-
 pub trait ToMdbValue {
-    fn to_mdb_value<'a>(&'a self) -> MdbValue<'a>;
+    fn to_mdb_value(&self) -> MdbValue<'_>;
 }
 
 /// `FromMdbValue` is supposed to reconstruct a value from
 /// memory slice. It allows to use zero copy where it is
 /// required.
-
 pub trait FromMdbValue {
     fn from_mdb_value(value: &MdbValue) -> Self;
 }
 
 impl ToMdbValue for Vec<u8> {
-    fn to_mdb_value<'a>(&'a self) -> MdbValue<'a> {
+    fn to_mdb_value(&self) -> MdbValue<'_> {
         unsafe {
-            MdbValue::new(std::mem::transmute(self.as_ptr()), self.len())
+            MdbValue::new(std::mem::transmute::<*const u8, *const libc::c_void>(self.as_ptr()), self.len())
         }
     }
 }
@@ -46,39 +44,39 @@ impl ToMdbValue for String {
     fn to_mdb_value<'a>(&'a self) -> MdbValue<'a> {
         unsafe {
             let t: &'a str = self;
-            MdbValue::new(std::mem::transmute(t.as_ptr()), t.len())
+            MdbValue::new(std::mem::transmute::<*const u8, *const libc::c_void>(t.as_ptr()), t.len())
         }
     }
 }
 
-impl<'a> ToMdbValue for &'a str {
-    fn to_mdb_value<'b>(&'b self) -> MdbValue<'b> {
+impl ToMdbValue for &str {
+    fn to_mdb_value(&self) -> MdbValue<'_> {
         unsafe {
-            MdbValue::new(mem::transmute(self.as_ptr()),
+            MdbValue::new(mem::transmute::<*const u8, *const libc::c_void>(self.as_ptr()),
                           self.len())
         }
     }
 }
 
-impl<'a> ToMdbValue for &'a [u8] {
-    fn to_mdb_value<'b>(&'b self) -> MdbValue<'b> {
+impl ToMdbValue for &[u8] {
+    fn to_mdb_value(&self) -> MdbValue<'_> {
         unsafe {
-            MdbValue::new(std::mem::transmute(self.as_ptr()),
+            MdbValue::new(std::mem::transmute::<*const u8, *const libc::c_void>(self.as_ptr()),
                           self.len())
         }
     }
 }
 
 impl ToMdbValue for MDB_val {
-    fn to_mdb_value<'a>(&'a self) -> MdbValue<'a> {
+    fn to_mdb_value(&self) -> MdbValue<'_> {
         unsafe {
             MdbValue::from_raw(self)
         }
     }
 }
 
-impl<'a> ToMdbValue for MdbValue<'a> {
-    fn to_mdb_value<'b>(&'b self) -> MdbValue<'b> {
+impl ToMdbValue for MdbValue<'_> {
+    fn to_mdb_value(&self) -> MdbValue<'_> {
         *self
     }
 }
@@ -87,7 +85,7 @@ impl<'a> ToMdbValue for MdbValue<'a> {
 impl FromMdbValue for String {
     fn from_mdb_value(value: &MdbValue) -> String {
         unsafe {
-            let ptr = mem::transmute(value.get_ref());
+            let ptr = mem::transmute::<*const libc::c_void, *const u8>(value.get_ref());
             let data: Vec<u8> = slice::from_raw_parts(ptr, value.get_size()).to_vec();
             String::from_utf8(data).unwrap()
         }
@@ -97,7 +95,7 @@ impl FromMdbValue for String {
 impl FromMdbValue for Vec<u8> {
     fn from_mdb_value(value: &MdbValue) -> Vec<u8> {
         unsafe {
-            let ptr = mem::transmute(value.get_ref());
+            let ptr = mem::transmute::<*const libc::c_void, *const u8>(value.get_ref());
             slice::from_raw_parts(ptr, value.get_size()).to_vec()
         }
     }
@@ -127,7 +125,7 @@ impl<'b> FromMdbValue for &'b [u8] {
 macro_rules! mdb_for_primitive {
     ($t:ty) => (
         impl ToMdbValue for $t {
-            fn to_mdb_value<'a>(&'a self) -> MdbValue<'a> {
+            fn to_mdb_value(&self) -> MdbValue<'_> {
                 MdbValue::new_from_sized(self)
             }
         }
