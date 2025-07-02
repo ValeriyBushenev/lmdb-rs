@@ -99,18 +99,7 @@ macro_rules! assert_state_eq {
             }})
 }
 
-macro_rules! assert_state_not {
-    ($log:ident, $cur:expr, $exp:expr) =>
-        ({
-            let c = $cur;
-            let e = $exp;
-            if c != e {
-                ()
-            } else {
-                let msg = format!("{} shouldn't be in {:?}", stringify!($log), e);
-                return Err(StateError(msg))
-            }})
-}
+
 
 /// MdbError wraps information about LMDB error
 #[derive(Debug)]
@@ -148,9 +137,15 @@ impl MdbError {
 impl std::fmt::Display for MdbError {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            &NotFound | &KeyExists | &TxnFull |
-            &CursorFull | &PageFull | &Corrupted |
-            &Panic | &InvalidPath | &CacheError => write!(fmt, "{}", self.description()),
+            &NotFound => write!(fmt, "not found"),
+            &KeyExists => write!(fmt, "key exists"),
+            &TxnFull => write!(fmt, "txn full"),
+            &CursorFull => write!(fmt, "cursor full"),
+            &PageFull => write!(fmt, "page full"),
+            &Corrupted => write!(fmt, "corrupted"),
+            &Panic => write!(fmt, "panic"),
+            &InvalidPath => write!(fmt, "invalid path for database"),
+            &CacheError => write!(fmt, "db cache error"),
             &StateError(ref msg) => write!(fmt, "{}", msg),
             &Other(code, ref msg) => write!(fmt, "{}: {}", code, msg)
         }
@@ -468,7 +463,7 @@ impl<'a> Database<'a> {
     }
 
     /// Returns an iterator through keys starting with start_key (>=), start_key is included
-    pub fn keyrange_from<'c, K: ToMdbValue + 'c>(&'c self, start_key: &'c K) -> MdbResult<CursorIterator<'c, CursorFromKeyIter>> {
+    pub fn keyrange_from<'c, K: ToMdbValue + 'c>(&'c self, start_key: &'c K) -> MdbResult<CursorIterator<'c, CursorFromKeyIter<'c>>> {
         let cursor = self.txn.new_cursor(self.handle)?;
         let key_range = CursorFromKeyIter::new(start_key);
         let wrap = CursorIterator::wrap(cursor, key_range);
@@ -476,7 +471,7 @@ impl<'a> Database<'a> {
     }
 
     /// Returns an iterator through keys less than end_key, end_key is not included
-    pub fn keyrange_to<'c, K: ToMdbValue + 'c>(&'c self, end_key: &'c K) -> MdbResult<CursorIterator<'c, CursorToKeyIter>> {
+    pub fn keyrange_to<'c, K: ToMdbValue + 'c>(&'c self, end_key: &'c K) -> MdbResult<CursorIterator<'c, CursorToKeyIter<'c>>> {
         let cursor = self.txn.new_cursor(self.handle)?;
         let key_range = CursorToKeyIter::new(end_key);
         let wrap = CursorIterator::wrap(cursor, key_range);
@@ -486,7 +481,7 @@ impl<'a> Database<'a> {
     /// Returns an iterator through keys `start_key <= x < end_key`. This is, start_key is
     /// included in the iteration, while end_key is kept excluded.
     pub fn keyrange_from_to<'c, K: ToMdbValue + 'c>(&'c self, start_key: &'c K, end_key: &'c K)
-                               -> MdbResult<CursorIterator<'c, CursorKeyRangeIter>>
+                               -> MdbResult<CursorIterator<'c, CursorKeyRangeIter<'c>>>
     {
         let cursor = self.txn.new_cursor(self.handle)?;
         let key_range = CursorKeyRangeIter::new(start_key, end_key, false);
@@ -499,7 +494,7 @@ impl<'a> Database<'a> {
     /// multiple items when DB created with ffi::MDB_DUPSORT).
     /// Iterator is valid while cursor is valid
     pub fn keyrange<'c, K: ToMdbValue + 'c>(&'c self, start_key: &'c K, end_key: &'c K)
-                               -> MdbResult<CursorIterator<'c, CursorKeyRangeIter>>
+                               -> MdbResult<CursorIterator<'c, CursorKeyRangeIter<'c>>>
     {
         let cursor = self.txn.new_cursor(self.handle)?;
         let key_range = CursorKeyRangeIter::new(start_key, end_key, true);
@@ -648,7 +643,7 @@ impl EnvBuilder {
                               perms as ffi::mdb_mode_t)
         };
 
-        drop(self);
+        let _ = self;
         match res {
             ffi::MDB_SUCCESS => {
                 Ok(Environment::from_raw(env, is_readonly))
@@ -681,7 +676,7 @@ impl EnvBuilder {
             },
             Err(e) => {
                 if e.kind() == io::ErrorKind::NotFound {
-                    fs::create_dir_all(path.as_ref().clone()).map_err(|e| {
+                    fs::create_dir_all(path.as_ref()).map_err(|e| {
                         error!("failed to auto create dir: {}", e);
                         MdbError::InvalidPath
                     })
@@ -1480,15 +1475,7 @@ impl<'txn> Cursor<'txn> {
         Ok((k, v))
     }
 
-    #[allow(dead_code)]
-    // This one is used for debugging, so it's to OK to leave it for a while
-    fn dump_value(&self, prefix: &str) {
-        if self.valid_key {
-            println!("{}: key {:?}, data {:?}", prefix,
-                     self.key_val,
-                     self.data_val);
-        }
-    }
+
 
     fn set_value<V: ToMdbValue>(&mut self, value: &V, flags: c_uint) -> MdbResult<()> {
         self.ensure_key_valid()?;
