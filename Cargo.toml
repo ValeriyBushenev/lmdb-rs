@@ -1,11 +1,10 @@
 [package]
-name = "lmdb-rs-m"
-version = "0.8.0"
+name = "lmdb-rs"
+version = "0.7.6"
 authors = ["Valerii Hiora <valerii.hiora@gmail.com>"]
 license = "MIT"
-edition = "2021"
 description = "LMDB bindings"
-repository = "https://github.com/ValeriyBushenev/lmdb-rs"
+repository = "https://github.com/vhbit/lmdb-rs"
 documentation = "https://vhbit.github.io/lmdb-rs/lmdb_rs"
 readme = "README.md"
 keywords = ["lmdb", "db", "key-value", "kvs", "kv"]
@@ -15,11 +14,11 @@ exclude = [
         "up_doc.sh",
 ]
 
-[dependencies.liblmdb-sys-m]
-path = "liblmdb-sys-m"
-version = "0.2.3"
+[dependencies.liblmdb-sys]
+path = "liblmdb-sys"
+version = "0.2.2"
 
 [dependencies]
-log = "0.4"
+log = "0.3"
 libc = "0.2"
-bitflags = "2.9"
+bitflags = "1.3"
